@@ -1,9 +1,11 @@
 # Ubuntu release versions 18.04 and 20.04 are supported
 ARG UBUNTU_RELEASE=20.04
 ARG CUDA_VERSION=11.2.2
-FROM nvcr.io/nvidia/cudagl:${CUDA_VERSION}-runtime-ubuntu${UBUNTU_RELEASE}
+FROM nvcr.io/nvidia/cudagl:${CUDA_VERSION}-runtime-ubuntu${UBUNTU_RELEASE} AS egl-base
 
 LABEL maintainer "https://github.com/ehfd,https://github.com/danisla"
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 ARG UBUNTU_RELEASE
 ARG CUDA_VERSION
@@ -193,6 +195,29 @@ RUN VIRTUALGL_VERSION=$(curl -fsSL "https://api.github.com/repos/VirtualGL/virtu
     chmod u+s /usr/lib/i386-linux-gnu/libvglfaker.so && \
     chmod u+s /usr/lib/i386-linux-gnu/libdlfaker.so
 
+# Create user with password ${PASSWD}
+RUN apt-get update && apt-get install --no-install-recommends -y \
+        sudo && \
+    rm -rf /var/lib/apt/lists/* && \
+    groupadd -g 1000 user && \
+    useradd -ms /bin/bash user -u 1000 -g 1000 && \
+    usermod -a -G adm,audio,cdrom,dialout,dip,fax,floppy,input,lp,lpadmin,plugdev,sudo,tape,tty,video,voice user && \
+    echo "user ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
+    chown user:user /home/user && \
+    echo "user:${PASSWD}" | chpasswd && \
+    ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime && echo "$TZ" > /etc/timezone
+
+
+
+
+FROM egl-base AS egl-desktop
+
+ARG UBUNTU_RELEASE
+ARG CUDA_VERSION
+# Make all NVIDIA GPUs visible, but we want to manually install drivers
+ARG NVIDIA_VISIBLE_DEVICES=all
+ARG DEBIAN_FRONTEND=noninteractive
+
 # Wine, Winetricks, and PlayOnLinux, comment out the below lines to disable
 ARG WINE_BRANCH=devel
 RUN if [ "${UBUNTU_RELEASE}" = "18.04" ]; then add-apt-repository ppa:cybermax-dexter/sdl2-backport; fi && \
@@ -289,18 +314,6 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 
 # Add custom packages below this comment, or use FROM in a new container and replace entrypoint.sh or supervisord.conf
 
-# Create user with password ${PASSWD}
-RUN apt-get update && apt-get install --no-install-recommends -y \
-        sudo && \
-    rm -rf /var/lib/apt/lists/* && \
-    groupadd -g 1000 user && \
-    useradd -ms /bin/bash user -u 1000 -g 1000 && \
-    usermod -a -G adm,audio,cdrom,dialout,dip,fax,floppy,input,lp,lpadmin,plugdev,scanner,sudo,tape,tty,video,voice user && \
-    echo "user ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
-    chown user:user /home/user && \
-    echo "user:${PASSWD}" | chpasswd && \
-    ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime && echo "$TZ" > /etc/timezone
-
 COPY entrypoint.sh /etc/entrypoint.sh
 RUN chmod 755 /etc/entrypoint.sh
 COPY selkies-gstreamer-entrypoint.sh /etc/selkies-gstreamer-entrypoint.sh
@@ -315,3 +328,17 @@ ENV USER=user
 WORKDIR /home/user
 
 ENTRYPOINT ["/usr/bin/supervisord"]
+
+
+
+
+FROM egl-base AS egl-onlyvgl
+
+COPY entrypoint-onlyvgl.sh /etc/entrypoint-onlyvgl.sh
+RUN chmod 755 /etc/entrypoint-onlyvgl.sh
+
+USER user
+ENV USER=user
+WORKDIR /home/user
+
+ENTRYPOINT ["/etc/entrypoint-onlyvgl.sh"]

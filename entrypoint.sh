@@ -15,7 +15,7 @@ source /opt/gstreamer/gst-env
 export DISPLAY=":0"
 export __GL_SYNC_TO_VBLANK="0"
 export __NV_PRIME_RENDER_OFFLOAD="1"
-Xvfb "${DISPLAY}" -ac -screen "0" "8192x4096x${CDEPTH}" -dpi "${DPI}" +extension "RANDR" +extension "GLX" +iglx +extension "MIT-SHM" +render -nolisten "tcp" -noreset -shmem &
+Xvfb "${DISPLAY}" -ac -screen "0" "8192x4096x${CDEPTH}" -dpi "${DPI}" +extension "RANDR" +extension "GLX" +iglx +extension "MIT-SHM" +render -listen "tcp" -noreset -shmem &
 
 # Wait for X11 to start
 echo "Waiting for X socket"
