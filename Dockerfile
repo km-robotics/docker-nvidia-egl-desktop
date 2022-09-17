@@ -15,7 +15,9 @@ ARG DEBIAN_FRONTEND=noninteractive
 ENV NVIDIA_DRIVER_CAPABILITIES all
 ENV DISPLAY :0
 ENV PULSE_SERVER 127.0.0.1:4713
-ENV XDG_RUNTIME_DIR /tmp
+# has to be in a dedicated subdirectory instead of /tmp, otherwise the permissions on /tmp will change
+RUN mkdir -p /tmp/xdg_runtime_dir
+ENV XDG_RUNTIME_DIR=/tmp/xdg_runtime_dir
 
 # Default environment variables (password is "mypasswd")
 ENV TZ UTC
