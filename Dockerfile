@@ -16,6 +16,7 @@ ENV NVIDIA_DRIVER_CAPABILITIES all
 ENV DISPLAY :0
 ENV PULSE_SERVER 127.0.0.1:4713
 # has to be in a dedicated subdirectory instead of /tmp, otherwise the permissions on /tmp will change
+# must do it also in entrypoint, or maybe only there?
 RUN mkdir -p /tmp/xdg_runtime_dir
 ENV XDG_RUNTIME_DIR=/tmp/xdg_runtime_dir
 

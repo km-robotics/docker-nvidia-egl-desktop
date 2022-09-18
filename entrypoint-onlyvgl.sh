@@ -5,6 +5,9 @@ echo "user:${PASSWD:-*}" | sudo chpasswd
 sudo ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime && echo "$TZ" | sudo tee /etc/timezone > /dev/null
 export PATH="${PATH}:/opt/VirtualGL/bin"
 
+mkdir -p /tmp/xdg_runtime_dir
+export XDG_RUNTIME_DIR=/tmp/xdg_runtime_dir
+
 export __GL_SYNC_TO_VBLANK="0"
 export __NV_PRIME_RENDER_OFFLOAD="1"
 
