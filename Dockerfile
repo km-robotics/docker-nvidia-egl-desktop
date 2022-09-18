@@ -296,6 +296,9 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     ln -s /opt/noVNC/vnc.html /opt/noVNC/index.html && \
     git clone https://github.com/novnc/websockify /opt/noVNC/utils/websockify
 
+# Add index.html for noVNC that does autoconnect, autoreconnect and automatic local scaling
+ADD index.html /opt/noVNC/
+
 # Add custom packages below this comment, or use FROM in a new container and replace entrypoint.sh or supervisord.conf
 
 COPY entrypoint.sh /etc/entrypoint.sh
