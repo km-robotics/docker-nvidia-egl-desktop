@@ -17,7 +17,8 @@ source /opt/gstreamer/gst-env
 export DISPLAY=":0"
 export __GL_SYNC_TO_VBLANK="0"
 export __NV_PRIME_RENDER_OFFLOAD="1"
-Xvfb "${DISPLAY}" -ac -screen "0" "8192x4096x${CDEPTH}" -dpi "${DPI}" +extension "RANDR" +extension "GLX" +iglx +extension "MIT-SHM" +render -listen "tcp" -noreset -shmem &
+
+Xvfb "${DISPLAY}" -ac -screen "0" "8192x4096x${CDEPTH}" -dpi "${DPI}" +extension "RANDR" +extension "GLX" +iglx +extension "MIT-SHM" +render -listen "tcp" -noreset -shmem ${XVFB_CMD_ADD} &
 
 # Wait for X11 to start
 echo "Waiting for X socket"
@@ -29,7 +30,7 @@ selkies-gstreamer-resize "${SIZEW}x${SIZEH}"
 if [ "${NOVNC_ENABLE,,}" = "true" ]; then
   if [ -n "${BASIC_AUTH_PASSWORD:-$PASSWD}" ]; then export NOVNC_PASSWORDARG="-passwd ${BASIC_AUTH_PASSWORD:-$PASSWD}"; else unset NOVNC_PASSWORDARG; fi
   if [ -n "$NOVNC_VIEWPASS" ]; then export NOVNC_VIEWONLY="-viewpasswd ${NOVNC_VIEWPASS}"; else unset NOVNC_VIEWONLY; fi
-  x11vnc -display "${DISPLAY}" ${NOVNC_PASSWORDARG} -shared -forever -repeat -xkb -snapfb -threads -xrandr "resize" -rfbport 5900 ${NOVNC_VIEWONLY} &
+  x11vnc -display "${DISPLAY}" ${NOVNC_PASSWORDARG} -shared -forever -repeat -xkb -wait 10 -defer 10 -ping 5 -xrandr "resize" -rfbport 5900 ${NOVNC_VIEWONLY} ${X11VNC_CMD_ADD} &
   /opt/noVNC/utils/novnc_proxy --vnc localhost:5900 --listen 8080 --heartbeat 10 &
 fi
 

@@ -302,6 +302,10 @@ ADD index.html /opt/noVNC/
 
 # Add custom packages below this comment, or use FROM in a new container and replace entrypoint.sh or supervisord.conf
 
+# can be used in derived container images to supply additional arguments to Xvfb and x11vnc
+ENV XVFB_CMD_ADD=
+ENV X11VNC_CMD_ADD=
+
 COPY entrypoint.sh /etc/entrypoint.sh
 RUN chmod 755 /etc/entrypoint.sh
 COPY selkies-gstreamer-entrypoint.sh /etc/selkies-gstreamer-entrypoint.sh
