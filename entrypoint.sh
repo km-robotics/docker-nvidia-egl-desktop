@@ -43,6 +43,11 @@ else
   xfce4-session &
 fi
 
+# https://askubuntu.com/questions/950252/x11vnc-headless-on-ubuntu-is-very-slow-until-monitor-connected
+sleep 10
+xfconf-query -c xfwm4 -p /general/vblank_mode --create -s off
+xfconf-query -c xfwm4 -p /general/use_compositing -s false
+
 # Fix selkies-gstreamer keyboard mapping
 if [ "${NOVNC_ENABLE,,}" != "true" ]; then
   sudo xmodmap -e "keycode 94 shift = less less"
