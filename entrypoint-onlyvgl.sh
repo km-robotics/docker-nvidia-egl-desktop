@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 sudo chown user:user /home/user
-echo "user:$PASSWD" | sudo chpasswd
+echo "user:${PASSWD:-*}" | sudo chpasswd
 sudo ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime && echo "$TZ" | sudo tee /etc/timezone > /dev/null
 export PATH="${PATH}:/opt/VirtualGL/bin"
 
