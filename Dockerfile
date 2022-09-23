@@ -57,6 +57,7 @@ RUN dpkg --add-architecture i386 && \
         cups-pdf \
         curl \
         file \
+        less \
         wget \
         bzip2 \
         gzip \
@@ -77,12 +78,9 @@ RUN dpkg --add-architecture i386 && \
         vim \
         htop \
         firefox \
-        transmission-gtk \
         qpdfview \
         xarchiver \
         adwaita-icon-theme-full \
-        brltty \
-        brltty-x11 \
         desktop-file-utils \
         fonts-dejavu-core \
         fonts-freefont-ttf \
@@ -96,8 +94,6 @@ RUN dpkg --add-architecture i386 && \
         fonts-symbola \
         fonts-ubuntu \
         gucharmap \
-        mpd \
-        onboard \
         parole \
         policykit-desktop-privileges \
         libpulse0 \
@@ -314,23 +310,93 @@ COPY supervisord.conf /etc/supervisord.conf
 RUN chmod 755 /etc/supervisord.conf
 
 EXPOSE 8080
+EXPOSE 5900
 
 USER user
 ENV USER=user
 WORKDIR /home/user
 
-ENTRYPOINT ["/usr/bin/supervisord"]
+CMD ["/usr/bin/supervisord"]
 
 
 
 
 FROM egl-base AS egl-onlyvgl
 
-COPY entrypoint-onlyvgl.sh /etc/entrypoint-onlyvgl.sh
-RUN chmod 755 /etc/entrypoint-onlyvgl.sh
+COPY entrypoint-onlyvgl.sh /etc/entrypoint.sh
+RUN chmod 755 /etc/entrypoint.sh
 
 USER user
 ENV USER=user
 WORKDIR /home/user
 
-ENTRYPOINT ["/etc/entrypoint-onlyvgl.sh"]
+CMD ["/etc/entrypoint.sh"]
+
+
+
+
+FROM egl-base AS egl-turbovnc
+
+ARG UBUNTU_RELEASE
+ARG CUDA_VERSION
+# Make all NVIDIA GPUs visible, but we want to manually install drivers
+ARG NVIDIA_VISIBLE_DEVICES=all
+ARG DEBIAN_FRONTEND=noninteractive
+
+ENV TURBOVNC_VERSION=3.0.1
+RUN curl -fsSL -o "turbovnc_${TURBOVNC_VERSION}_amd64.deb" "https://sourceforge.net/projects/turbovnc/files/${TURBOVNC_VERSION}/turbovnc_${TURBOVNC_VERSION}_amd64.deb/download" && \
+        apt-get update && apt-get install -y --no-install-recommends ./turbovnc_${TURBOVNC_VERSION}_amd64.deb && \
+        rm -rf ./turbovnc_${TURBOVNC_VERSION}_amd64.dev && \
+        rm -rf /var/lib/apt/lists/*
+
+# Install latest noVNC web interface for fallback
+RUN apt-get update && apt-get install --no-install-recommends -y \
+        autoconf \
+        automake \
+        autotools-dev \
+        chrpath \
+        debhelper \
+        git \
+        jq \
+        python3 \
+        python3-numpy \
+        libc6-dev \
+        libcairo2-dev \
+        libjpeg-turbo8-dev \
+        libssl-dev \
+        libv4l-dev \
+        libvncserver-dev \
+        libtool-bin \
+        libxdamage-dev \
+        libxinerama-dev \
+        libxrandr-dev \
+        libxss-dev \
+        libxtst-dev \
+        libavahi-client-dev && \
+    rm -rf /var/lib/apt/lists/* && \
+    NOVNC_VERSION=$(curl -fsSL "https://api.github.com/repos/noVNC/noVNC/releases/latest" | jq -r '.tag_name' | sed 's/[^0-9\.\-]*//g') && \
+    curl -fsSL https://github.com/novnc/noVNC/archive/v${NOVNC_VERSION}.tar.gz | tar -xzf - -C /opt && \
+    mv /opt/noVNC-${NOVNC_VERSION} /opt/noVNC && \
+    git clone https://github.com/novnc/websockify /opt/noVNC/utils/websockify
+
+# Add index.html for noVNC that does autoconnect, autoreconnect and automatic local scaling
+ADD index.html /opt/noVNC/
+
+# Add custom packages below this comment, or use FROM in a new container and replace entrypoint.sh or supervisord.conf
+
+# can be used in derived container images to supply additional arguments to Xvnc
+ENV XVNC_CMD_ADD=
+
+COPY entrypoint-turbovnc.sh /etc/entrypoint.sh
+RUN chmod 755 /etc/entrypoint.sh
+COPY supervisord.conf /etc/supervisord.conf
+RUN chmod 755 /etc/supervisord.conf
+
+EXPOSE 8080
+EXPOSE 5900
+
+USER user
+ENV USER=user
+WORKDIR /home/user
+
+CMD ["/usr/bin/supervisord"]
