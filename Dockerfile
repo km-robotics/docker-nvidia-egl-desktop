@@ -1,7 +1,6 @@
-# Ubuntu release versions 18.04 and 20.04 are supported
-ARG UBUNTU_RELEASE=20.04
-ARG CUDA_VERSION=11.2.2
-FROM nvcr.io/nvidia/cudagl:${CUDA_VERSION}-runtime-ubuntu${UBUNTU_RELEASE} AS egl-base
+ARG UBUNTU_RELEASE=22.04
+ARG CUDA_VERSION=12.0.1
+FROM ghcr.io/km-robotics/cudagl:${CUDA_VERSION}-runtime-ubuntu${UBUNTU_RELEASE} AS egl-base
 
 LABEL maintainer "https://github.com/ehfd,https://github.com/danisla"
 
@@ -180,7 +179,8 @@ RUN if [ "${UBUNTU_RELEASE}" = "18.04" ]; then apt-get update && apt-get install
 }" > /etc/vulkan/icd.d/nvidia_icd.json
 
 # Install VirtualGL
-RUN VIRTUALGL_VERSION=$(curl -fsSL "https://api.github.com/repos/VirtualGL/virtualgl/releases/67016359" | jq -r '.tag_name' | sed 's/[^0-9\.\-]*//g') && \
+# pinned to version 3.1
+RUN VIRTUALGL_VERSION=3.1 && \
     curl -fsSL -O https://sourceforge.net/projects/virtualgl/files/virtualgl_${VIRTUALGL_VERSION}_amd64.deb && \
     curl -fsSL -O https://sourceforge.net/projects/virtualgl/files/virtualgl32_${VIRTUALGL_VERSION}_amd64.deb && \
     apt-get update && apt-get install -y --no-install-recommends ./virtualgl_${VIRTUALGL_VERSION}_amd64.deb ./virtualgl32_${VIRTUALGL_VERSION}_amd64.deb && \
@@ -217,7 +217,8 @@ ARG NVIDIA_VISIBLE_DEVICES=all
 ARG DEBIAN_FRONTEND=noninteractive
 
 # Install latest selkies-gstreamer (https://github.com/selkies-project/selkies-gstreamer) build, Python application, and web application
-RUN apt-get update && apt-get install --no-install-recommends -y \
+RUN SELKIES_VERSION=1.3.7 && \
+    apt-get update && apt-get install --no-install-recommends -y \
         build-essential \
         python3-pip \
         python3-dev \
@@ -253,15 +254,14 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     if [ "${UBUNTU_RELEASE}" \> "20.04" ]; then apt-get install --no-install-recommends -y xcvt; fi && \
     rm -rf /var/lib/apt/lists/* && \
     cd /opt && \
-    SELKIES_VERSION=$(curl -fsSL "https://api.github.com/repos/selkies-project/selkies-gstreamer/releases/latest" | jq -r '.tag_name' | sed 's/[^0-9\.\-]*//g') && \
     curl -fsSL "https://github.com/selkies-project/selkies-gstreamer/releases/download/v${SELKIES_VERSION}/selkies-gstreamer-v${SELKIES_VERSION}-ubuntu${UBUNTU_RELEASE}.tgz" | tar -zxf - && \
     curl -O -fsSL "https://github.com/selkies-project/selkies-gstreamer/releases/download/v${SELKIES_VERSION}/selkies_gstreamer-${SELKIES_VERSION}-py3-none-any.whl" && pip3 install "selkies_gstreamer-${SELKIES_VERSION}-py3-none-any.whl" && rm -f "selkies_gstreamer-${SELKIES_VERSION}-py3-none-any.whl" && \
-    if [ "${UBUNTU_RELEASE}" \> "18.04" ]; then pip3 install --upgrade --force-reinstall "https://github.com/selkies-project/python-xlib/archive/master.zip"; fi && \
     curl -fsSL "https://github.com/selkies-project/selkies-gstreamer/releases/download/v${SELKIES_VERSION}/selkies-gstreamer-web-v${SELKIES_VERSION}.tgz" | tar -zxf - && \
     cd /usr/local/cuda/lib64 && sudo find . -maxdepth 1 -type l -name "*libnvrtc.so.*" -exec sh -c 'ln -sf $(basename {}) libnvrtc.so' \;
 
 # Install latest noVNC web interface for fallback
-RUN apt-get update && apt-get install --no-install-recommends -y \
+RUN NOVNC_VERSION=1.4.0 && \
+    apt-get update && apt-get install --no-install-recommends -y \
         autoconf \
         automake \
         autotools-dev \
@@ -287,7 +287,6 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     rm -rf /var/lib/apt/lists/* && \
     git clone "https://github.com/LibVNC/x11vnc.git" /tmp/x11vnc && \
     cd /tmp/x11vnc && autoreconf -fi && ./configure && make install && cd / && rm -rf /tmp/* && \
-    NOVNC_VERSION=$(curl -fsSL "https://api.github.com/repos/noVNC/noVNC/releases/latest" | jq -r '.tag_name' | sed 's/[^0-9\.\-]*//g') && \
     curl -fsSL https://github.com/novnc/noVNC/archive/v${NOVNC_VERSION}.tar.gz | tar -xzf - -C /opt && \
     mv /opt/noVNC-${NOVNC_VERSION} /opt/noVNC && \
     ln -s /opt/noVNC/vnc.html /opt/noVNC/index.html && \
@@ -343,14 +342,15 @@ ARG CUDA_VERSION
 ARG NVIDIA_VISIBLE_DEVICES=all
 ARG DEBIAN_FRONTEND=noninteractive
 
-ENV TURBOVNC_VERSION=3.0.1
-RUN curl -fsSL -o "turbovnc_${TURBOVNC_VERSION}_amd64.deb" "https://sourceforge.net/projects/turbovnc/files/${TURBOVNC_VERSION}/turbovnc_${TURBOVNC_VERSION}_amd64.deb/download" && \
-        apt-get update && apt-get install -y --no-install-recommends ./turbovnc_${TURBOVNC_VERSION}_amd64.deb && \
-        rm -rf ./turbovnc_${TURBOVNC_VERSION}_amd64.dev && \
-        rm -rf /var/lib/apt/lists/*
+RUN TURBOVNC_VERSION=3.0.3 && \
+    curl -fsSL -o "turbovnc_${TURBOVNC_VERSION}_amd64.deb" "https://sourceforge.net/projects/turbovnc/files/${TURBOVNC_VERSION}/turbovnc_${TURBOVNC_VERSION}_amd64.deb/download" && \
+    apt-get update && apt-get install -y --no-install-recommends ./turbovnc_${TURBOVNC_VERSION}_amd64.deb && \
+    rm -rf ./turbovnc_${TURBOVNC_VERSION}_amd64.dev && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install latest noVNC web interface for fallback
-RUN apt-get update && apt-get install --no-install-recommends -y \
+RUN NOVNC_VERSION=1.4.0 && \
+    apt-get update && apt-get install --no-install-recommends -y \
         autoconf \
         automake \
         autotools-dev \
@@ -374,7 +374,6 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
         libxtst-dev \
         libavahi-client-dev && \
     rm -rf /var/lib/apt/lists/* && \
-    NOVNC_VERSION=$(curl -fsSL "https://api.github.com/repos/noVNC/noVNC/releases/latest" | jq -r '.tag_name' | sed 's/[^0-9\.\-]*//g') && \
     curl -fsSL https://github.com/novnc/noVNC/archive/v${NOVNC_VERSION}.tar.gz | tar -xzf - -C /opt && \
     mv /opt/noVNC-${NOVNC_VERSION} /opt/noVNC && \
     git clone https://github.com/novnc/websockify /opt/noVNC/utils/websockify
@@ -413,11 +412,11 @@ ARG NVIDIA_VISIBLE_DEVICES=all
 ARG DEBIAN_FRONTEND=noninteractive
 
 # https://github.com/kasmtech/KasmVNC/releases/download/v1.0.1/kasmvncserver_focal_1.0.1_amd64.deb
-ENV KASMVNC_VERSION=1.0.1
-RUN curl -O -fsSL "https://github.com/kasmtech/KasmVNC/releases/download/v${KASMVNC_VERSION}/kasmvncserver_focal_${KASMVNC_VERSION}_amd64.deb" && \
-        apt-get update && apt-get install -y --no-install-recommends "./kasmvncserver_focal_${KASMVNC_VERSION}_amd64.deb" && \
-        rm -rf "./kasmvncserver_focal_${KASMVNC_VERSION}_amd64.deb" && \
-        rm -rf /var/lib/apt/lists/*
+RUN KASMVNC_VERSION=1.0.1 && \
+    curl -fsSL "https://github.com/kasmtech/KasmVNC/releases/download/v${KASMVNC_VERSION}/kasmvncserver_jammy_${KASMVNC_VERSION}_amd64.deb" -o kasmvnc.deb && \
+    apt-get update && apt-get install -y --no-install-recommends "./kasmvnc.deb" && \
+    rm -rf kasmvnc.deb && \
+    rm -rf /var/lib/apt/lists/*
 
 # Rename KasmVNC index.html and add our own with default parameters
 RUN mv /usr/share/kasmvnc/www/index.html /usr/share/kasmvnc/www/kasm.html
