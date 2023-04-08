@@ -44,7 +44,7 @@ vncserver ${DISPLAY} \
   r \
   -to 5 -rfbwait 8000 \
   -listen tcp -ac \
-  ${X11VNC_CMD_ADD}
+  ${X11VNC_CMD_ADD} ${XVNC_CMD_ADD}
 set +x
 
 if [ "${NOVNC_ENABLE,,}" = "true" ]; then

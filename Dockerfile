@@ -294,7 +294,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     git clone https://github.com/novnc/websockify /opt/noVNC/utils/websockify
 
 # Add index.html for noVNC that does autoconnect, autoreconnect and automatic local scaling
-ADD index.html /opt/noVNC/
+COPY index-novnc.html /opt/noVNC/index.html
 
 # Add custom packages below this comment, or use FROM in a new container and replace entrypoint.sh or supervisord.conf
 
@@ -380,7 +380,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     git clone https://github.com/novnc/websockify /opt/noVNC/utils/websockify
 
 # Add index.html for noVNC that does autoconnect, autoreconnect and automatic local scaling
-ADD index.html /opt/noVNC/
+COPY index-novnc.html /opt/noVNC/index.html
 
 # Add custom packages below this comment, or use FROM in a new container and replace entrypoint.sh or supervisord.conf
 
@@ -389,7 +389,7 @@ ENV XVNC_CMD_ADD=
 
 COPY entrypoint-turbovnc.sh /etc/entrypoint.sh
 RUN chmod 755 /etc/entrypoint.sh
-COPY supervisord.conf /etc/supervisord.conf
+COPY supervisord-turbovnc.conf /etc/supervisord.conf
 RUN chmod 755 /etc/supervisord.conf
 
 EXPOSE 8080
@@ -400,3 +400,45 @@ ENV USER=user
 WORKDIR /home/user
 
 CMD ["/usr/bin/supervisord"]
+
+
+
+
+FROM egl-base AS egl-kasmvnc
+
+ARG UBUNTU_RELEASE
+ARG CUDA_VERSION
+# Make all NVIDIA GPUs visible, but we want to manually install drivers
+ARG NVIDIA_VISIBLE_DEVICES=all
+ARG DEBIAN_FRONTEND=noninteractive
+
+# https://github.com/kasmtech/KasmVNC/releases/download/v1.0.1/kasmvncserver_focal_1.0.1_amd64.deb
+ENV KASMVNC_VERSION=1.0.1
+RUN curl -O -fsSL "https://github.com/kasmtech/KasmVNC/releases/download/v${KASMVNC_VERSION}/kasmvncserver_focal_${KASMVNC_VERSION}_amd64.deb" && \
+        apt-get update && apt-get install -y --no-install-recommends "./kasmvncserver_focal_${KASMVNC_VERSION}_amd64.deb" && \
+        rm -rf "./kasmvncserver_focal_${KASMVNC_VERSION}_amd64.deb" && \
+        rm -rf /var/lib/apt/lists/*
+
+# Rename KasmVNC index.html and add our own with default parameters
+RUN mv /usr/share/kasmvnc/www/index.html /usr/share/kasmvnc/www/kasm.html
+COPY index-kasmvnc.html /usr/share/kasmvnc/www/index.html
+# Modify web files so that it does not think that it's running inside VDI and does not hide the control bar :)
+RUN sed -i 's/return window.self !== window.top;/return false;/' /usr/share/kasmvnc/www/app/webutil.js
+RUN sed -i 's/return window.self !== window.top;/return false;/' /usr/share/kasmvnc/www/dist/main.bundle.js
+
+# Add custom packages below this comment, or use FROM in a new container and replace entrypoint.sh or supervisord.conf
+
+# can be used in derived container images to supply additional arguments to Xvnc
+ENV XVNC_CMD_ADD=
+
+COPY entrypoint-kasmvnc.sh /etc/entrypoint.sh
+RUN chmod 755 /etc/entrypoint.sh
+
+EXPOSE 8443/tcp
+EXPOSE 8443/udp
+
+USER user
+ENV USER=user
+WORKDIR /home/user
+
+CMD ["/etc/entrypoint.sh"]
